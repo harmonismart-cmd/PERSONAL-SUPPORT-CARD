@@ -1,13 +1,4 @@
-import express from "express";
-import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const app = express();
-app.use(express.json());
 
 function getAIInstance(customKey?: string) {
   const apiKey = customKey || process.env.GEMINI_API_KEY;
@@ -19,13 +10,23 @@ function getAIInstance(customKey?: string) {
     httpOptions: {
       headers: {
         "User-Agent": "aistudio-build",
-      }
-    }
+      },
+    },
   });
 }
 
-// API endpoint for AI assistant
-app.post("/api/gemini/suggest", async (req, res) => {
+export default async function handler(req: any, res: any) {
+  // Handle CORS and preflight requests if needed, but since it's same-origin on Vercel it's simple
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Method Not Allowed" });
+    return;
+  }
+
   try {
     const { text, field, maxLength } = req.body;
     if (!text || typeof text !== "string") {
@@ -71,14 +72,14 @@ ${text}
             suggestions: {
               type: Type.ARRAY,
               items: {
-                type: Type.STRING
+                type: Type.STRING,
               },
-              description: "3 highly polished and concise suggestions that strictly satisfy the rules."
-            }
+              description: "3 highly polished and concise suggestions that strictly satisfy the rules.",
+            },
           },
-          required: ["suggestions"]
-        }
-      }
+          required: ["suggestions"],
+        },
+      },
     });
 
     const resultText = response.text;
@@ -87,36 +88,9 @@ ${text}
     }
 
     const parsed = JSON.parse(resultText);
-    res.json({ suggestions: parsed.suggestions });
+    res.status(200).json({ suggestions: parsed.suggestions });
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
+    console.error("Vercel Serverless Gemini API Error:", error);
     res.status(500).json({ error: error?.message || "Failed to generate suggestions." });
   }
-});
-
-// Serve static assets in production, or mount Vite dev server in development
-async function startServer() {
-  const PORT = 3000;
-
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
 }
-
-startServer().catch((err) => {
-  console.error("Failed to start server:", err);
-});
