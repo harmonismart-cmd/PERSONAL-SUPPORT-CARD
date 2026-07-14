@@ -1,0 +1,6 @@
+{
+  "name": "支援者パーソナルカード生成ツール",
+  "description": "入力フォームへ文章を記入すると、支援者パーソナルカードを生成する。完成したカードは、編集可能なPPTXで書き出せる。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
